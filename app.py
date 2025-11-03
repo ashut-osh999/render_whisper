@@ -26,7 +26,7 @@ app.add_middleware(
 
 # Load model at startup
 print(f"Loading Whisper model: {MODEL_SIZE}")
-model = WhisperModel(MODEL_SIZE, device="cpu", compute_type="int8_float16" if MODEL_SIZE in ("base","small") else "float32")
+model = WhisperModel(MODEL_SIZE, device="cpu", compute_type="int8")
 
 @app.get("/health")
 async def health():
