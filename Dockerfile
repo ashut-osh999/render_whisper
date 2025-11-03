@@ -12,11 +12,11 @@ RUN apt-get update && apt-get install -y ffmpeg && rm -rf /var/lib/apt/lists/*
 # Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy rest of the application code
+# Copy rest of the code
 COPY . .
 
-# Expose port (Render will use this to serve the API)
-EXPOSE 10000
+# Expose Render's dynamic port (Render sets PORT automatically)
+EXPOSE $PORT
 
-# Start the FastAPI app using Uvicorn
-CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "10000"]
+# Start the FastAPI app using Render's PORT environment variable
+CMD ["bash", "start.sh"]
