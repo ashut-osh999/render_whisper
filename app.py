@@ -44,7 +44,7 @@ async def transcribe(file: UploadFile = File(...), language: str = None):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to save uploaded file: {e}")
 
-    # Transcribe using faster_whisper
+    # Transcribe using faster-whisper
     try:
         transcribe_kwargs = {}
         if language:
@@ -52,10 +52,12 @@ async def transcribe(file: UploadFile = File(...), language: str = None):
         elif LANG:
             transcribe_kwargs["language"] = LANG
 
-        segments: List[Dict[str, Any]] = []
+        segments_gen, info = model.transcribe(tmp_path, **transcribe_kwargs)
+
+        segments = []
         full_text_parts = []
-        # transcribe returns segments generator
-        for segment in model.transcribe(tmp_path, **transcribe_kwargs)[1]:
+
+        for segment in segments_gen:
             seg = {
                 "id": int(segment.index),
                 "start": float(segment.start),
@@ -66,7 +68,7 @@ async def transcribe(file: UploadFile = File(...), language: str = None):
             full_text_parts.append(segment.text.strip())
 
         result = {
-            "text": " ".join([p for p in full_text_parts if p]),
+            "text": " ".join(full_text_parts),
             "segments": segments
         }
     except Exception as e:
