@@ -55,16 +55,15 @@ async def transcribe(file: UploadFile = File(...), language: str = None):
         segments = []
         full_text_parts = []
 
-        for segment in segments_gen:
-            seg = {
-                "id": int(segment.index),
-                "start": float(segment.start),
-                "end": float(segment.end),
-                "text": segment.text.strip()
-            }
-            segments.append(seg)
-            full_text_parts.append(segment.text.strip())
-
+        for i, segment in enumerate(segments_gen):
+    seg = {
+        "id": i,
+        "start": float(segment.start),
+        "end": float(segment.end),
+        "text": segment.text.strip()
+    }
+    segments.append(seg)
+    full_text_parts.append(segment.text.strip())
         result = {
             "text": " ".join(full_text_parts),
             "segments": segments,
