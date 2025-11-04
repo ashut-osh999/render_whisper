@@ -16,7 +16,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
 # Expose Render's dynamic port (Render sets PORT automatically)
-EXPOSE 8000
+EXPOSE 10000
 
 # Start the FastAPI app using Render's PORT environment variable
 CMD ["bash", "start.sh"]
