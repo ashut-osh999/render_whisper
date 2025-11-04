@@ -1,7 +1,6 @@
 # app.py
 from fastapi import FastAPI, File, UploadFile, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
 import uvicorn
 import os
 import tempfile
@@ -11,26 +10,25 @@ from typing import List, Dict, Any
 # CONFIG
 MODEL_SIZE = os.environ.get("WHISPER_MODEL", "base")  # "tiny", "base", "small", "medium", "large"
 LANG = os.environ.get("WHISPER_LANG", None)  # e.g. "hi" or None for auto
-CONCURRENCY = int(os.environ.get("WHISPER_CONCURRENCY", "1"))
 
 app = FastAPI(title="Audio2SRT Whisper API")
 
-# Allow hostinger domain or wildcard for testing
+# CORS setup (allow all for now; tighten later if needed)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # change to your domain in production
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 # Load model at startup
-print(f"Loading Whisper model: {MODEL_SIZE}")
+print(f"🚀 Loading Whisper model: {MODEL_SIZE}")
 model = WhisperModel(MODEL_SIZE, device="cpu", compute_type="int8")
 
 @app.get("/health")
 async def health():
-    return {"status":"ok"}
+    return {"status": "ok"}
 
 @app.post("/transcribe")
 async def transcribe(file: UploadFile = File(...), language: str = None):
@@ -69,10 +67,16 @@ async def transcribe(file: UploadFile = File(...), language: str = None):
 
         result = {
             "text": " ".join(full_text_parts),
-            "segments": segments
+            "segments": segments,
+            "info": {
+                "language": info.language,
+                "duration": info.duration
+            }
         }
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Transcription failed: {e}")
+
     finally:
         try:
             os.remove(tmp_path)
@@ -81,6 +85,8 @@ async def transcribe(file: UploadFile = File(...), language: str = None):
 
     return result
 
+
 if __name__ == "__main__":
-    uvicorn.run("app:app", host="0.0.0.0", port=int(os.environ.get("PORT", 8000)), reload=False)
-    
+    port = int(os.environ.get("PORT", 10000))
+    uvicorn.run("app:app", host="0.0.0.0", port=port, reload=False)
+
