@@ -54,7 +54,7 @@ async def transcribe(file: UploadFile = File(...), language: str = None):
 
         segments = []
         full_text_parts = []
-
+     # ✅ correct indentation here
         for i, segment in enumerate(segments_gen):
     seg = {
         "id": i,
