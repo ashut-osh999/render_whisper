@@ -18,7 +18,7 @@ app = FastAPI(title="Audio2SRT Whisper API", version="1.0")
 # Enable CORS (for testing / production adjust this)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://wbstatus.in"],  # TODO: replace with specific domain in production
+    allow_origins=["https://wbstatus.in", "https://render-whisper.onrender.com"]  # TODO: replace with specific domain in production
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
