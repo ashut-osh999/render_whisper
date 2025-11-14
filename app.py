@@ -8,7 +8,7 @@ from typing import Optional, Dict
 from deep_translator import GoogleTranslator   # ✅ NEW & SAFE
 
 # ---------------- CONFIG ----------------
-MODEL_SIZE = os.environ.get("WHISPER_MODEL", "medium")  # best for Hindi
+MODEL_SIZE = os.environ.get("WHISPER_MODEL", "small")  # best for Hindi
 DEVICE = os.environ.get("DEVICE", "cpu")
 COMPUTE_TYPE = os.environ.get("COMPUTE_TYPE", "int8")
 
