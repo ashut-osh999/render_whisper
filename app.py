@@ -19,10 +19,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "*",                         # ✅ allow ALL domains (best for public API)
-        "https://wbstatus.in",
-        "http://wbstatus.in",
-        "https://render-whisper.onrender.com"
-    ],
+     ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
