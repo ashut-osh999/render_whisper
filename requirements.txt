@@ -3,3 +3,4 @@ uvicorn[standard]
 faster-whisper
 python-multipart
 pydantic
+googletrans==4.0.0-rc1
