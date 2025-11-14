@@ -1,4 +1,3 @@
-# app.py
 from fastapi import FastAPI, File, UploadFile, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
@@ -6,15 +5,15 @@ import os
 import tempfile
 from faster_whisper import WhisperModel
 from typing import Optional, Dict
-from googletrans import Translator
+from deep_translator import GoogleTranslator   # ✅ NEW & SAFE
 
 # ---------------- CONFIG ----------------
-MODEL_SIZE = os.environ.get("WHISPER_MODEL", "small")  # good balance for Hindi
+MODEL_SIZE = os.environ.get("WHISPER_MODEL", "medium")  # best for Hindi
 DEVICE = os.environ.get("DEVICE", "cpu")
 COMPUTE_TYPE = os.environ.get("COMPUTE_TYPE", "int8")
 
 # ---------------- APP INIT ----------------
-app = FastAPI(title="🎧 Whisper Transcriber", version="3.0")
+app = FastAPI(title="🎧 Whisper Transcriber", version="3.1")
 
 app.add_middleware(
     CORSMiddleware,
@@ -36,7 +35,6 @@ except Exception as e:
     print(f"❌ Model load failed: {e}")
     raise RuntimeError(f"Model load error: {e}")
 
-translator = Translator()  # For Hindi normalization
 
 # ---------------- ROUTES ----------------
 @app.get("/health")
@@ -102,7 +100,10 @@ async def transcribe(file: UploadFile = File(...), language: Optional[str] = Non
         if detected_lang in ["hi", "ur", "unknown"]:
             try:
                 print("🪄 Normalizing to Devanagari Hindi script...")
-                translated_text = translator.translate(final_text, dest="hi").text
+                translated_text = GoogleTranslator(
+                    source="auto",
+                    target="hi"
+                ).translate(final_text)
             except Exception as t_err:
                 print(f"⚠️ Translation fallback failed: {t_err}")
 
