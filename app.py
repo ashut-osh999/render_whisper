@@ -1,29 +1,43 @@
 from fastapi import FastAPI, File, UploadFile, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 import uvicorn
 import os
 import tempfile
 from faster_whisper import WhisperModel
 from typing import Optional, Dict
-from deep_translator import GoogleTranslator   # ✅ NEW & SAFE
+from deep_translator import GoogleTranslator
+
 
 # ---------------- CONFIG ----------------
-MODEL_SIZE = os.environ.get("WHISPER_MODEL", "small")  # best for Hindi
+MODEL_SIZE = os.environ.get("WHISPER_MODEL", "small")
 DEVICE = os.environ.get("DEVICE", "cpu")
 COMPUTE_TYPE = os.environ.get("COMPUTE_TYPE", "int8")
 
 # ---------------- APP INIT ----------------
-app = FastAPI(title="🎧 Whisper Transcriber", version="3.1")
+app = FastAPI(title="🎧 Whisper Transcriber", version="3.2")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "*",                         # ✅ allow ALL domains (best for public API)
-     ],
+    allow_origins=["*"],     # allow all
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["*"],     # POST + OPTIONS included
     allow_headers=["*"],
 )
+
+# ---------------- OPTIONS FIX (critical!) ----------------
+@app.options("/transcribe")
+async def options_transcribe():
+    return JSONResponse(
+        status_code=200,
+        content={"message": "OK"},
+        headers={
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "POST, OPTIONS",
+            "Access-Control-Allow-Headers": "*",
+        }
+    )
+
 
 # ---------------- MODEL LOAD ----------------
 print(f"🚀 Loading Whisper model: {MODEL_SIZE} on {DEVICE} ({COMPUTE_TYPE})")
@@ -38,27 +52,22 @@ except Exception as e:
 # ---------------- ROUTES ----------------
 @app.get("/health")
 async def health() -> Dict[str, str]:
-    """Health check endpoint"""
     return {"status": "ok", "model": MODEL_SIZE, "device": DEVICE}
 
 
 @app.post("/transcribe")
 async def transcribe(file: UploadFile = File(...), language: Optional[str] = None):
-    """Transcribe and auto-normalize Hindi (Devanagari)"""
+
     tmp_path = None
     try:
-        # Save uploaded file temporarily
+        # save temp file
         suffix = os.path.splitext(file.filename)[1] or ".mp3"
         with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
             tmp_path = tmp.name
             tmp.write(await file.read())
 
-        if not os.path.exists(tmp_path):
-            raise HTTPException(status_code=500, detail="Temporary file not saved correctly.")
-
         print(f"🎵 Received file: {file.filename}")
 
-        # Configure transcription
         transcribe_kwargs = {
             "beam_size": 5,
             "vad_filter": True,
@@ -67,46 +76,43 @@ async def transcribe(file: UploadFile = File(...), language: Optional[str] = Non
 
         if language:
             transcribe_kwargs["language"] = language
-            print(f"🌐 Using provided language: {language}")
+            print("🌐 Using provided language:", language)
         else:
             print("🌐 Auto-detecting language...")
 
-        # Run transcription
+        # Whisper transcribe
         segments_gen, info = model.transcribe(tmp_path, **transcribe_kwargs)
         detected_lang = getattr(info, "language", "unknown")
+
         print(f"✅ Detected Language: {detected_lang}")
 
-        segments, full_text_parts = [], []
+        segments = []
+        texts = []
 
-        for i, segment in enumerate(segments_gen):
-            seg_text = getattr(segment, "text", "").strip()
-            seg_data = {
+        for i, seg in enumerate(segments_gen):
+            text = seg.text.strip()
+            segments.append({
                 "id": i,
-                "start": float(getattr(segment, "start", 0)),
-                "end": float(getattr(segment, "end", 0)),
-                "text": seg_text
-            }
-            segments.append(seg_data)
-            full_text_parts.append(seg_text)
+                "start": float(seg.start),
+                "end": float(seg.end),
+                "text": text
+            })
+            texts.append(text)
 
-        if not segments:
-            raise HTTPException(status_code=400, detail="No speech detected in the audio.")
+        final_text = " ".join(texts).strip()
 
-        final_text = " ".join(full_text_parts).strip()
-
-        # ---------------- AUTO NORMALIZATION ----------------
+        # Translate / Normalize
         translated_text = final_text
         if detected_lang in ["hi", "ur", "unknown"]:
             try:
-                print("🪄 Normalizing to Devanagari Hindi script...")
                 translated_text = GoogleTranslator(
                     source="auto",
                     target="hi"
                 ).translate(final_text)
-            except Exception as t_err:
-                print(f"⚠️ Translation fallback failed: {t_err}")
+            except Exception as tr:
+                print("⚠️ Translation failed:", tr)
 
-        result = {
+        return {
             "original_text": final_text,
             "translated_text": translated_text,
             "segments": segments,
@@ -116,18 +122,15 @@ async def transcribe(file: UploadFile = File(...), language: Optional[str] = Non
             }
         }
 
-        return result
-
-    except HTTPException as e:
-        raise e
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Transcription failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Transcription failed: {e}")
+
     finally:
         if tmp_path and os.path.exists(tmp_path):
             try:
                 os.remove(tmp_path)
-            except Exception as cleanup_err:
-                print(f"⚠️ Temp cleanup failed: {cleanup_err}")
+            except:
+                pass
 
 
 # ---------------- RUN SERVER ----------------
